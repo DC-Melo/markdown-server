@@ -57,7 +57,9 @@ class MarkdownConverter(object):
         mduml_text=md_text
         for m in matches:
             encode=self.plantuml_encode("\n".join(m.split("\n")[1:-1]))
-            mduml_text = mduml_text.replace(m, f"![plantuml](http://www.plantuml.com/plantuml/png/{encode})" )
+            url=f"![plantuml](http://www.plantuml.com/plantuml/png/{encode})"
+            print(url)
+            mduml_text = mduml_text.replace(m, url)
         return mduml_text
 
 
