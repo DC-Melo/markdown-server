@@ -5,6 +5,10 @@ import markdown as md
 import codecs
 import sys
 import os
+import re
+import zlib
+import base64
+import string
 from .env import css_path, ms_encoding, markdown_type, \
     html_dir, html_extension
 
@@ -35,7 +39,7 @@ class MarkdownConverter(object):
             """
 
     def convert(self, src, dst=""):
-        code = md.markdown(self.read_md(src), extensions=[markdown_type])
+        code = md.markdown(self.md_plantuml_adapt(self.read_md(src)), extensions=[markdown_type])
         return self.write_html(code, src, dst)
 
     def read_md(self, file_name):
@@ -46,6 +50,27 @@ class MarkdownConverter(object):
             mode="r"
         )
         return md_file.read()
+
+
+    def md_plantuml_adapt(self, md_text):
+        matches = re.findall(r'```plantuml.*?```', md_text, re.DOTALL|re.MULTILINE)
+        mduml_text=md_text
+        for m in matches:
+            encode=self.plantuml_encode("\n".join(m.split("\n")[1:-1]))
+            mduml_text = mduml_text.replace(m, f"![plantuml](http://www.plantuml.com/plantuml/png/{encode})" )
+        return mduml_text
+
+
+    def plantuml_encode(self, plantuml_text):
+        """zlib compress the plantuml text and encode it for the plantuml server"""
+        zlibbed_str = zlib.compress(plantuml_text.encode('utf-8'))
+        compressed_string = zlibbed_str[2:-4]
+
+        plantuml_alphabet = string.digits + string.ascii_uppercase + string.ascii_lowercase + '-_'
+        base64_alphabet   = string.ascii_uppercase + string.ascii_lowercase + string.digits + '+/'
+        b64_to_plantuml = bytes.maketrans(base64_alphabet.encode('utf-8'), plantuml_alphabet.encode('utf-8'))
+        return base64.b64encode(compressed_string).translate(b64_to_plantuml).decode('utf-8')
+
 
     def write_html(self, body, file_name, dst):
         html_path = os.path.join(html_dir, file_name + html_extension)
